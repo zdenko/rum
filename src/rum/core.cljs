@@ -69,7 +69,7 @@
                                                      (call-all init props)
                                                      volatile!)})
                                   (.call Preact/Component this props)))
-        _              (goog/inherits ctor Preact.Component)
+        _              (goog/inherits ctor Preact/Component)
         prototype      (gobj/get ctor "prototype")]
 
     (when-not (empty? will-mount)
