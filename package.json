@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "dependencies": {
+    "preact": "^10.4.8",
+    "preact-render-to-string": "^5.1.10"
+  }
+}
