@@ -3,7 +3,10 @@
   #?(:clj (:require [clojure.spec.alpha :as s]
                     [cljs.core.specs.alpha])
      :cljs (:require [cljs.loader]
-                     [cljsjs.react])))
+                     ; [cljsjs.react]
+                     ["preact" :as Preact]
+                     ["preact/compat" :as Pcompat]
+                     )))
 
 #?(:clj
    (s/def :lazy/libspec
@@ -18,7 +21,7 @@
                   :refer :cljs.core.specs.alpha/refer))))))
 
 #?(:cljs
-   (def react-lazy (.-lazy js/React)))
+   (def react-lazy (Pcompat/lazy)))
 
 #?(:cljs
    (def load! cljs.loader/load))
@@ -49,4 +52,4 @@
                                                       (ok# (cljs.core/js-obj "default" #(apply (deref (cljs.core/resolve '~qualified-sym)) (aget % ":rum/args")))))))]
                       `(let [lazy# (react-lazy (fn [] (~'js/Promise. ~on-load)))]
                          (defn ~sym [& args#]
-                           (.createElement js/React lazy# (cljs.core/js-obj ":rum/args" args#)))))))))))))
+                           (Preact/createElement lazy# (cljs.core/js-obj ":rum/args" args#)))))))))))))

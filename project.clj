@@ -6,16 +6,13 @@
 
   :dependencies
   [[org.clojure/clojure "1.9.0" :scope "provided"]
-   [org.clojure/clojurescript "1.10.773" :scope "provided"]
-   [cljsjs/react "16.8.6-0"]
-   [cljsjs/react-dom "16.8.6-0"]]
+   [org.clojure/clojurescript "1.10.773" :scope "provided"]]
 
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-cljfmt "0.6.7"]]
 
   :profiles {:dev {:source-paths ["examples"]
-                   :dependencies [[cljsjs/react-dom-server "16.8.6-0"]
-                                  [cljsjs/prop-types "15.7.2-0"]
+                   :dependencies [[cljsjs/prop-types "15.7.2-0"]
                                   [clj-diffmatchpatch "0.0.9.3" :exclusions [org.clojure/clojure]]]}
              :perf {:source-paths ["perf"]
                     :dependencies
@@ -63,4 +60,3 @@
       :pretty-print true
       :pseudo-names true
       :parallel-build true}}]})
-

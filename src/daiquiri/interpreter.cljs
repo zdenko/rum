@@ -2,13 +2,14 @@
   (:require [clojure.string :as str]
             [daiquiri.normalize :as normalize]
             [daiquiri.util :as util]
-            [cljsjs.react]))
+            ; [cljsjs.react]
+            ["preact" :as Preact]))
 
-(defn ^js/React.Element create-element
+(defn ^js/Preact.Element create-element
   "Create a React element. Returns a JavaScript object when running
   under ClojureScript, and a om.dom.Element record in Clojure."
   [type attrs children]
-  (.apply (.-createElement js/React) nil (.concat #js [type attrs] children)))
+  (.apply (Preact/createElement) nil (.concat #js [type attrs] children)))
 
 (defn attributes [attrs]
   (when-let [js-attrs (clj->js (util/html-to-dom-attrs attrs))]

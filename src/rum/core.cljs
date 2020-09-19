@@ -2,8 +2,12 @@
   (:refer-clojure :exclude [ref deref])
   (:require-macros rum.core)
   (:require
-   [cljsjs.react]
-   [cljsjs.react.dom]
+   ; [cljsjs.react]
+   ; [cljsjs.react.dom]
+   ["preact" :as Preact]
+   ["preact/hooks" :as Phook]
+   ["preact/compat" :as Pcompat]
+   ["preact-render-to-string" :as Pstring]
    [goog.object :as gobj]
    [goog.functions :as fns]
    [clojure.set :as set]
@@ -64,8 +68,8 @@
                                                      (assoc :rum/react-component this)
                                                      (call-all init props)
                                                      volatile!)})
-                                  (.call js/React.Component this props)))
-        _              (goog/inherits ctor js/React.Component)
+                                  (.call Preact/Component this props)))
+        _              (goog/inherits ctor Preact.Component)
         prototype      (gobj/get ctor "prototype")]
 
     (when-not (empty? will-mount)
@@ -181,10 +185,10 @@
                  (fn [& args]
                    (let [props #js {":rum/initial-state" {:rum/args args}
                                     "key" (apply key-fn args)}]
-                     (js/React.createElement class props)))
+                     (Preact/createElement class props)))
                  (fn [& args]
                    (let [props #js {":rum/initial-state" {:rum/args args}}]
-                     (js/React.createElement class props))))]
+                     (Preact/createElement class props))))]
     (with-meta ctor {:rum/class class})))
 
 (declare static)
@@ -194,7 +198,7 @@
      (aget next-props ":rum/args")))
 
 (defn react-memo [f]
-  (if-some [memo (.-memo js/React)]
+  (if-some [memo (Phook/memo)]
     (memo f memo-compare-props)
     f))
 
@@ -206,7 +210,7 @@
           _     (aset class "displayName" display-name)
           memo-class (react-memo class)
           ctor  (fn [& args]
-                  (.createElement js/React memo-class #js {":rum/args" args}))]
+                  (Preact/createElement memo-class #js {":rum/args" args}))]
       (with-meta ctor {:rum/class memo-class}))
 
     (empty? mixins)
@@ -214,7 +218,7 @@
                   (apply render-body (aget props ":rum/args")))
           _     (aset class "displayName" display-name)
           ctor  (fn [& args]
-                  (.createElement js/React class #js {":rum/args" args}))]
+                  (Preact/createElement class #js {":rum/args" args}))]
       (with-meta ctor {:rum/class class}))
 
     :else
@@ -235,26 +239,26 @@
 (defn mount
   "Add element to the DOM tree. Idempotent. Subsequent mounts will just update element."
   [element node]
-  (js/ReactDOM.render element node)
+  (Preact/render element node)
   nil)
 
 (defn unmount
   "Removes component from the DOM tree."
   [node]
-  (js/ReactDOM.unmountComponentAtNode node))
+  (Preact/render nil node))
 
 (defn hydrate
   "Same as [[mount]] but must be called on DOM tree already rendered by a server via [[render-html]]."
   [element node]
-  (js/ReactDOM.hydrate element node))
+  (Preact/hydrate element node))
 
 (defn portal
   "Render `element` in a DOM `node` that is ouside of current DOM hierarchy."
   [element node]
-  (js/ReactDOM.createPortal element node))
+  (Pcompat/createPortal element node))
 
 (defn create-context [default-value]
-  (.createContext js/React default-value))
+  (Preact/createContext default-value))
 
 
 ;; initialization
@@ -262,7 +266,7 @@
 
 (defn with-key
   "Adds React key to element.
-   
+
    ```
    (rum/defc label [text] [:div text])
 
@@ -271,11 +275,11 @@
        (rum/mount js/document.body))
    ```"
   [element key]
-  (js/React.cloneElement element #js {"key" key} nil))
+  (Preact/cloneElement element #js {"key" key} nil))
 
 (defn with-ref
   "Adds React ref (string or callback) to element.
-   
+
    ```
    (rum/defc label [text] [:div text])
 
@@ -284,13 +288,13 @@
        (rum/mount js/document.body))
    ```"
   [element ref]
-  (js/React.cloneElement element #js {"ref" ref} nil))
+  (Preact/cloneElement element #js {"ref" ref} nil))
 
 (defn dom-node
   "Usage of this function is discouraged. Use :ref callback instead.
   Given state, returns top-level DOM node of component. Call it during lifecycle callbacks. Can’t be called during render."
   [state]
-  (js/ReactDOM.findDOMNode (:rum/react-component state)))
+  (Pcompat/findDOMNode (:rum/react-component state)))
 
 (defn ref
   "DEPRECATED: Use :ref (fn [dom-or-nil]) callback instead. See rum issue #124
@@ -302,7 +306,7 @@
   "DEPRECATED: Use :ref (fn [dom-or-nil]) callback instead. See rum issue #124
   Given state and ref handle, returns DOM node associated with ref."
   [state key]
-  (js/ReactDOM.findDOMNode (ref state (name key))))
+  (Pcompat/findDOMNode (ref state (name key))))
 
 
 ;; static mixin
@@ -310,12 +314,12 @@
 
 (def static
   "Mixin. Will avoid re-render if none of component’s arguments have changed. Does equality check (`=`) on all arguments.
-  
+
    ```
    (rum/defc label < rum/static
      [text]
      [:div text])
-     
+
    (rum/mount (label \"abc\") js/document.body)
 
    ;; def != abc, will re-render
@@ -334,14 +338,14 @@
 
 (defn local
   "Mixin constructor. Adds an atom to component’s state that can be used to keep stuff during component’s lifecycle. Component will be re-rendered if atom’s value changes. Atom is stored under user-provided key or under `:rum/local` by default.
-  
+
    ```
    (rum/defcs counter < (rum/local 0 :cnt)
      [state label]
      (let [*cnt (:cnt state)]
        [:div {:on-click (fn [_] (swap! *cnt inc))}
          label @*cnt]))
-   
+
    (rum/mount (counter \"Click count: \"))
    ```"
   ([initial] (local initial :rum/local))
@@ -364,7 +368,7 @@
 
 (def reactive
   "Mixin. Works in conjunction with [[react]].
-  
+
    ```
    (rum/defc comp < rum/reactive
      [*counter]
@@ -417,9 +421,9 @@
 (def ^{:style/indent 2
        :arglists '([refs key f] [refs key f opts])
        :doc "Use this to create “chains” and acyclic graphs of dependent atoms.
-   
+
              [[derived-atom]] will:
-          
+
              - Take N “source” refs.
              - Set up a watch on each of them.
              - Create “sink” atom.
@@ -436,19 +440,19 @@
              (def *x (derived-atom [*a *b] ::key
                        (fn [a b]
                          (str a \":\" b))))
-             
+
              (type *x)  ;; => clojure.lang.Atom
              (deref *x) ;; => \"0:1\"
-             
+
              (swap! *a inc)
              (deref *x) ;; => \"1:1\"
-             
+
              (reset! *b 7)
              (deref *x) ;; => \"1:7\"
              ```
 
              Arguments:
-          
+
              - `refs` - sequence of source refs,
              - `key`  - unique key to register watcher, same as in `clojure.core/add-watch`,
              - `f`    - function that must accept N arguments (same as number of source refs) and return a value to be written to the sink ref. Note: `f` will be called with already dereferenced values,
@@ -464,24 +468,24 @@
 (defn cursor-in
   "Given atom with deep nested value and path inside it, creates an atom-like structure
    that can be used separately from main atom, but will sync changes both ways:
-  
+
    ```
    (def db (atom { :users { \"Ivan\" { :age 30 }}}))
-   
+
    (def ivan (rum/cursor db [:users \"Ivan\"]))
    (deref ivan) ;; => { :age 30 }
-   
+
    (swap! ivan update :age inc) ;; => { :age 31 }
    (deref db) ;; => { :users { \"Ivan\" { :age 31 }}}
-   
+
    (swap! db update-in [:users \"Ivan\" :age] inc)
    ;; => { :users { \"Ivan\" { :age 32 }}}
-   
+
    (deref ivan) ;; => { :age 32 }
    ```
-  
+
    Returned value supports `deref`, `swap!`, `reset!`, watches and metadata.
-  
+
    The only supported option is `:meta`"
   [ref path & {:as options}]
   (if (instance? cursor/Cursor ref)
@@ -503,7 +507,7 @@
     [:button {:on-click #(set-state! (inc value))}
       value])"
   [value-or-fn]
-  (.useState js/React value-or-fn))
+  (Phook/useState value-or-fn))
 
 (defn ^array use-reducer
   "Takes reducing function and initial state value.
@@ -520,7 +524,7 @@
 
   Read more at https://reactjs.org/docs/hooks-reference.html#usereducer"
   ([reducer-fn initial-value]
-   (.useReducer js/React #(reducer-fn %1 %2) initial-value identity)))
+   (Phook/useReducer #(reducer-fn %1 %2) initial-value identity)))
 
 (defn use-effect!
   "Takes setup-fn that executes either on the first render or after every update.
@@ -536,10 +540,10 @@
 
   Read more at https://reactjs.org/docs/hooks-effect.html"
   ([setup-fn]
-   (.useEffect js/React #(or (setup-fn) js/undefined)))
+   (Phook/useEffect #(or (setup-fn) js/undefined)))
   ([setup-fn deps]
    (->> (if (array? deps) deps (into-array deps))
-        (.useEffect js/React #(or (setup-fn) js/undefined)))))
+        (Phook/useEffect #(or (setup-fn) js/undefined)))))
 
 (defn use-callback
   "Takes callback function and returns memoized variant, memoization is done based on provided deps collection.
@@ -559,30 +563,30 @@
 
   Read more at https://reactjs.org/docs/hooks-reference.html#usecallback"
   ([callback]
-   (.useCallback js/React callback))
+   (Phook/useCallback callback))
   ([callback deps]
    (->> (if (array? deps) deps (into-array deps))
-        (.useCallback js/React callback))))
+        (Phook/useCallback callback))))
 
 (defn use-memo
   "Takes a function, memoizes it based on provided deps collection and executes immediately returning a result.
   Read more at https://reactjs.org/docs/hooks-reference.html#usememo"
   ([f]
-   (.useMemo js/React f))
+   (Phook/useMemo f))
   ([f deps]
    (->> (if (array? deps) deps (into-array deps))
-        (.useMemo js/React f))))
+        (Phook/useMemo f))))
 
 (defn use-ref
   "Takes a value and puts it into a mutable container which is persisted for the full lifetime of the component.
   https://reactjs.org/docs/hooks-reference.html#useref"
   ([initial-value]
-   (.useRef js/React initial-value)))
+   (Phook/useRef initial-value)))
 
 ;; Refs
 
 (defn create-ref []
-  (.createRef js/React))
+  (Phook/createRef))
 
 (defn deref
   "Takes a ref returned from use-ref and returns its current value."
@@ -605,18 +609,16 @@
    (render-html element nil))
   ([element opts]
    (if-not (identical? *target* "nodejs")
-     (.renderToString js/ReactDOMServer element)
-     (let [react-dom-server (js/require "react-dom/server")]
-       (.renderToString react-dom-server element)))))
+     (Pstring/render element)
+     (Pstring/render element))))
 
 (defn render-static-markup
   "Same as [[render-html]] but returned string has nothing React-specific.
   This allows Rum to be used as traditional server-side templating engine."
   [src]
   (if-not (identical? *target* "nodejs")
-    (.renderToStaticMarkup js/ReactDOMServer src)
-    (let [react-dom-server (js/require "react-dom/server")]
-      (.renderToStaticMarkup react-dom-server src))))
+    (Pstring/render src)
+    (Pstring/render src)))
 
 ;; JS components adapter
 (defn adapt-class-helper [type attrs children]

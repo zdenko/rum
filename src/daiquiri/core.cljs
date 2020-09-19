@@ -1,14 +1,15 @@
 (ns daiquiri.core
   (:require [daiquiri.interpreter]
-            [cljsjs.react]))
+            ; [cljsjs.react]
+            ["preact" :as Preact]))
 
-(defn ^js/React.Element create-element
+(defn ^js/Preact.Element create-element
   "The React.js create element function."
   [type attrs children]
   (if ^boolean children
-    (.apply (.-createElement js/React) nil (.concat #js [type attrs] children))
-    (.createElement js/React type attrs)))
+    (.apply (Preact/createElement) nil (.concat #js [type attrs] children))
+    (Preact/createElement type attrs)))
 
-(def ^js/React.Fragment fragment
+(def ^js/Preact.Fragment fragment
   "The React.js Fragment."
-  (.-Fragment js/React))
+  (Preact/Fragment))
